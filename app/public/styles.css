@@ -1,0 +1,18 @@
+*{box-sizing:border-box}body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;background:#111;color:#eee}
+.app{max-width:520px;margin:auto;min-height:100vh;background:#1b1b1f;padding:16px 16px 80px}
+h1{font-size:24px;margin:6px 0}h2{font-size:19px;margin:10px 0}small,.muted{color:#aaa}
+.card{background:#2a2a30;border-radius:14px;padding:14px;margin:12px 0}
+.btn{display:block;width:100%;padding:13px;border:0;border-radius:12px;font-weight:700;font-size:16px;background:#ff7a00;color:#111;margin-top:8px;cursor:pointer}
+.btn.g{background:#3a3a42;color:#eee}.btn.r{background:#5a1f1f;color:#fff}.btn:disabled{opacity:.5}
+.row{display:flex;gap:8px}.row>*{flex:1}
+input,select,textarea{width:100%;padding:11px;margin:5px 0;border-radius:10px;border:1px solid #333;background:#1b1b1f;color:#eee;font-size:16px}
+label{display:block;margin-top:6px}input[type=checkbox]{width:auto;margin-right:6px}
+.chips{display:grid;grid-template-columns:1fr 1fr;gap:8px}.chip{padding:10px;border-radius:12px;background:#1b1b1f;border:1px solid #333;text-align:center;cursor:pointer}
+.chip.on{outline:3px solid #ff7a00}.price{font-size:28px;color:#ff7a00;font-weight:800}
+.ok{color:#4cd964}.no{color:#ff6b5b}.banner{background:#123d24;border-radius:12px;padding:10px;text-align:center}
+nav{position:fixed;bottom:0;left:0;right:0;display:flex;justify-content:center;background:#151518;border-top:1px solid #333}
+nav a{flex:1;max-width:130px;text-align:center;padding:12px 4px;color:#ccc;text-decoration:none;font-size:13px}nav a.on{color:#ff7a00;font-weight:700}
+.badge{background:#ff3b30;color:#fff;border-radius:9px;padding:0 6px;font-size:11px;margin-left:3px}
+.msg{padding:8px 12px;border-radius:12px;margin:6px 0;max-width:80%}.me{background:#ff7a00;color:#111;margin-left:auto}.them{background:#3a3a42}
+.toast{position:fixed;top:12px;left:50%;transform:translateX(-50%);background:#333;padding:10px 16px;border-radius:10px;z-index:9}
+.kv{display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #333}

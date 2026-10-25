@@ -1,0 +1,231 @@
+rules_version = '2';
+// Truck With The Guy — Firestore security rules.
+// Hard rules: no phone/email is ever readable by another user; the app never handles job money;
+// payment handles are readable only by the trucker and a customer with a CONFIRMED match (pair doc).
+service cloud.firestore {
+  match /databases/{db}/documents {
+
+    function signedIn() { return request.auth != null; }
+    function uid() { return request.auth.uid; }
+    function isAdmin() { return signedIn() && exists(/databases/$(db)/documents/admins/$(uid())); }
+    function userDoc(u) { return get(/databases/$(db)/documents/users/$(u)).data; }
+    function hasUser() { return signedIn() && exists(/databases/$(db)/documents/users/$(uid())); }
+    function role() { return userDoc(uid()).role; }
+    function notBanned() { return !('banned' in userDoc(uid())) || userDoc(uid()).banned != true; }
+    function cfg() { return get(/databases/$(db)/documents/config/app).data; }
+    function inFreePeriod() { return request.time < cfg().launchDate + duration.value(cfg().freeDays * 86400, 's'); }
+    function canClaim() {
+      return cfg().requireSubscription != true || inFreePeriod()
+        || userDoc(uid()).get('subscriptionActive', false) == true;
+    }
+    // Block phone numbers (7+ digits incl. separators) and email addresses in free text.
+    function noContact(s) {
+      return s is string
+        && !s.matches('(?s).*[0-9][0-9 ().+-]{5,}[0-9].*')
+        && !s.matches('(?s).*[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+[.][A-Za-z]{2,}.*');
+    }
+    function cleanName(s) { return s is string && s.matches("^[A-Za-z][A-Za-z .'-]{0,39}$"); }
+    function onlyKeys(allowed) { return request.resource.data.keys().hasOnly(allowed); }
+    function changed() { return request.resource.data.diff(resource.data).affectedKeys(); }
+
+    // ---------- config (public read: launch banner + cities) ----------
+    match /config/{doc} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+    match /admins/{u} {
+      allow read: if signedIn() && (uid() == u || isAdmin());
+      allow write: if false; // add admins in the Firebase console only
+    }
+
+    // ---------- users (public profile: first name, role, city; NO contact info) ----------
+    match /users/{u} {
+      allow read: if signedIn();
+      allow create: if signedIn() && uid() == u
+        && onlyKeys(['role','name','city','createdAt'])
+        && request.resource.data.role in ['trucker','customer']
+        && cleanName(request.resource.data.name)
+        && request.resource.data.city is string && request.resource.data.city.size() <= 40;
+      allow update: if (signedIn() && uid() == u && changed().hasOnly(['name','city'])
+                          && cleanName(request.resource.data.name))
+                    || (isAdmin() && changed().hasOnly(['subscriptionActive','banned']));
+      allow delete: if signedIn() && uid() == u;
+    }
+
+    // ---------- private contact info: owner only, never readable by anyone else ----------
+    match /private/{u} {
+      allow read, delete: if signedIn() && uid() == u;
+      allow create, update: if signedIn() && uid() == u && onlyKeys(['email','phone','notifyEmail']);
+    }
+
+    // ---------- trucker public profile ----------
+    match /truckers/{u} {
+      allow read: if signedIn();
+      allow create, update: if signedIn() && uid() == u && role() == 'trucker' && notBanned()
+        && onlyKeys(['name','city','makeModel','bed','color','insured','active','updatedAt'])
+        && cleanName(request.resource.data.name)
+        && request.resource.data.makeModel in ['Ford F-150','Chevy Silverado 1500','Ram 1500','Toyota Tundra','GMC Sierra 1500','Other full-size']
+        && request.resource.data.bed in ['5.5 ft','6.5 ft','8 ft']
+        && request.resource.data.color in ['White','Black','Silver','Red','Blue','Gray']
+        && request.resource.data.insured is bool && request.resource.data.active is bool;
+      allow delete: if signedIn() && uid() == u;
+    }
+
+    // ---------- payment handles: owner, or customer with a confirmed pair ----------
+    match /handles/{u} {
+      allow read: if signedIn() && (uid() == u
+        || exists(/databases/$(db)/documents/pairs/$(u + '_' + uid())));
+      allow write: if signedIn() && uid() == u && role() == 'trucker'
+        && onlyKeys(['cashapp','zelle','venmo','payLink','cash','askDeposit','askFirst40']);
+    }
+    match /pairs/{pairId} {
+      allow read: if signedIn() && (resource.data.truckerId == uid() || resource.data.customerId == uid());
+      allow create: if signedIn()
+        && onlyKeys(['truckerId','customerId','matchId'])
+        && pairId == request.resource.data.truckerId + '_' + request.resource.data.customerId
+        && uid() in [request.resource.data.truckerId, request.resource.data.customerId]
+        && get(/databases/$(db)/documents/matches/$(request.resource.data.matchId)).data.status == 'confirmed'
+        && get(/databases/$(db)/documents/matches/$(request.resource.data.matchId)).data.truckerId == request.resource.data.truckerId
+        && get(/databases/$(db)/documents/matches/$(request.resource.data.matchId)).data.customerId == request.resource.data.customerId;
+      allow update, delete: if false;
+    }
+
+    // ---------- jobs (public: area + distance only; exact addresses are private) ----------
+    function cityCfg(c) { return cfg().cities[c]; }
+    function base(tb) { return {'1h':79,'2h':139,'half':249,'full':449}[tb]; }
+    function hours(tb) { return {'1h':1,'2h':2,'half':4,'full':8}[tb]; }
+    function priceFor(d) {
+      return math.round(base(d.timeBlock) * cityCfg(d.city).mult)
+        + (d.helper ? 30 * hours(d.timeBlock) : 0)
+        + (d.jobType == 'junk' ? 25 : 0);
+    }
+    match /jobs/{jobId} {
+      allow read: if signedIn();
+      allow create: if hasUser() && role() == 'customer' && notBanned()
+        && onlyKeys(['customerId','city','jobType','timeBlock','helper','pickupArea','dropoffArea','pickupMi','dropoffMi','when','notes','suggestedPrice','status','createdAt'])
+        && request.resource.data.customerId == uid()
+        && request.resource.data.status == 'open'
+        && request.resource.data.city in cfg().cities
+        && cityCfg(request.resource.data.city).active == true
+        && request.resource.data.jobType in ['store','move','marketplace','junk','hauling']
+        && request.resource.data.timeBlock in ['1h','2h','half','full']
+        && request.resource.data.helper is bool
+        && request.resource.data.pickupMi is number && request.resource.data.dropoffMi is number
+        && request.resource.data.pickupMi <= cityCfg(request.resource.data.city).radiusMi
+        && request.resource.data.dropoffMi <= cityCfg(request.resource.data.city).radiusMi
+        && noContact(request.resource.data.notes) && request.resource.data.notes.size() <= 300
+        && noContact(request.resource.data.pickupArea) && noContact(request.resource.data.dropoffArea)
+        && request.resource.data.suggestedPrice == priceFor(request.resource.data);
+      allow update: if isAdmin()
+        || (signedIn() && resource.data.customerId == uid() && changed().hasOnly(['status','matchId'])
+            && (
+              (resource.data.status == 'open' && request.resource.data.status == 'canceled')
+              || (resource.data.status == 'open' && request.resource.data.status == 'matched'
+                  && get(/databases/$(db)/documents/matches/$(request.resource.data.matchId)).data.status == 'confirmed'
+                  && get(/databases/$(db)/documents/matches/$(request.resource.data.matchId)).data.jobId == jobId)
+              || (resource.data.status == 'matched' && request.resource.data.status == 'completed')
+            ));
+      allow delete: if false;
+
+      match /private/{doc} {
+        function job() { return get(/databases/$(db)/documents/jobs/$(jobId)).data; }
+        allow read: if signedIn() && (job().customerId == uid()
+          || ('matchId' in job()
+              && get(/databases/$(db)/documents/matches/$(job().matchId)).data.truckerId == uid()
+              && get(/databases/$(db)/documents/matches/$(job().matchId)).data.status in ['confirmed','completed']));
+        allow create, update: if signedIn() && job().customerId == uid()
+          && onlyKeys(['pickupAddress','dropoffAddress']);
+      }
+    }
+
+    // ---------- matches (claim / counter / invite → both confirm) ----------
+    function jobOf(id) { return get(/databases/$(db)/documents/jobs/$(id)).data; }
+    match /matches/{matchId} {
+      function isParty() { return signedIn() && (resource.data.truckerId == uid() || resource.data.customerId == uid()); }
+      allow read: if isParty();
+      allow create: if hasUser() && notBanned()
+        && onlyKeys(['jobId','customerId','truckerId','price','kind','truckerOk','customerOk','status','createdAt'])
+        && matchId == request.resource.data.jobId + '_' + request.resource.data.truckerId
+        && jobOf(request.resource.data.jobId).status == 'open'
+        && request.resource.data.customerId == jobOf(request.resource.data.jobId).customerId
+        && request.resource.data.status == 'pending'
+        && request.resource.data.price is int
+        && (
+          // trucker claims at suggested price, or counter-offers
+          (role() == 'trucker' && request.resource.data.truckerId == uid() && canClaim()
+            && exists(/databases/$(db)/documents/truckers/$(uid()))
+            && request.resource.data.truckerOk == true && request.resource.data.customerOk == false
+            && ((request.resource.data.kind == 'claim' && request.resource.data.price == jobOf(request.resource.data.jobId).suggestedPrice)
+                || (request.resource.data.kind == 'counter' && request.resource.data.price >= 20 && request.resource.data.price <= 5000)))
+          // customer invites a trucker from the trucker list
+          || (role() == 'customer' && request.resource.data.customerId == uid()
+            && exists(/databases/$(db)/documents/truckers/$(request.resource.data.truckerId))
+            && request.resource.data.kind == 'invite'
+            && request.resource.data.customerOk == true && request.resource.data.truckerOk == false
+            && request.resource.data.price == jobOf(request.resource.data.jobId).suggestedPrice)
+        );
+      allow update: if isParty() && changed().hasOnly(['truckerOk','customerOk','status'])
+        && (
+          // set own confirm flag (and confirm when both are true)
+          (resource.data.status == 'pending'
+            && ((uid() == resource.data.truckerId && changed().hasOnly(['truckerOk','status']) && request.resource.data.truckerOk == true && canClaim())
+             || (uid() == resource.data.customerId && changed().hasOnly(['customerOk','status']) && request.resource.data.customerOk == true))
+            && jobOf(resource.data.jobId).status == 'open'
+            && ((request.resource.data.truckerOk && request.resource.data.customerOk && request.resource.data.status == 'confirmed')
+                || (!(request.resource.data.truckerOk && request.resource.data.customerOk) && request.resource.data.status == 'pending')))
+          || (resource.data.status == 'pending' && changed().hasOnly(['status']) && request.resource.data.status == 'declined')
+          || (resource.data.status == 'confirmed' && changed().hasOnly(['status']) && request.resource.data.status == 'completed')
+        );
+      allow delete: if false;
+
+      match /messages/{mid} {
+        function m() { return get(/databases/$(db)/documents/matches/$(matchId)).data; }
+        allow read: if signedIn() && uid() in [m().truckerId, m().customerId];
+        allow create: if signedIn() && uid() in [m().truckerId, m().customerId]
+          && m().status in ['pending','confirmed']
+          && onlyKeys(['senderId','text','createdAt'])
+          && request.resource.data.senderId == uid()
+          && request.resource.data.text is string
+          && request.resource.data.text.size() > 0 && request.resource.data.text.size() <= 1000
+          && noContact(request.resource.data.text);
+        allow update, delete: if false;
+      }
+    }
+
+    // ---------- ratings: one per party per match ----------
+    match /ratings/{rid} {
+      allow read: if signedIn();
+      allow create: if signedIn()
+        && onlyKeys(['matchId','raterId','rateeId','stars','comment','createdAt'])
+        && rid == request.resource.data.matchId + '_' + uid()
+        && request.resource.data.raterId == uid()
+        && get(/databases/$(db)/documents/matches/$(request.resource.data.matchId)).data.status in ['confirmed','completed']
+        && ((get(/databases/$(db)/documents/matches/$(request.resource.data.matchId)).data.truckerId == uid()
+              && request.resource.data.rateeId == get(/databases/$(db)/documents/matches/$(request.resource.data.matchId)).data.customerId)
+         || (get(/databases/$(db)/documents/matches/$(request.resource.data.matchId)).data.customerId == uid()
+              && request.resource.data.rateeId == get(/databases/$(db)/documents/matches/$(request.resource.data.matchId)).data.truckerId))
+        && request.resource.data.stars is int && request.resource.data.stars >= 1 && request.resource.data.stars <= 5
+        && noContact(request.resource.data.comment) && request.resource.data.comment.size() <= 300;
+      allow update, delete: if false;
+    }
+
+    // ---------- in-app notifications (emailed by Cloud Function, no contact info) ----------
+    match /notifications/{u}/items/{nid} {
+      allow read: if signedIn() && uid() == u;
+      allow update: if signedIn() && uid() == u && changed().hasOnly(['read']);
+      allow create: if signedIn()
+        && onlyKeys(['type','from','matchId','text','read','createdAt'])
+        && request.resource.data.from == uid()
+        && request.resource.data.read == false
+        && request.resource.data.type in ['claim','counter','invite','confirmed','declined','message','completed']
+        && noContact(request.resource.data.text) && request.resource.data.text.size() <= 140
+        && (
+          (get(/databases/$(db)/documents/matches/$(request.resource.data.matchId)).data.truckerId == uid()
+            && get(/databases/$(db)/documents/matches/$(request.resource.data.matchId)).data.customerId == u)
+          || (get(/databases/$(db)/documents/matches/$(request.resource.data.matchId)).data.customerId == uid()
+            && get(/databases/$(db)/documents/matches/$(request.resource.data.matchId)).data.truckerId == u)
+        );
+      allow delete: if signedIn() && uid() == u;
+    }
+  }
+}

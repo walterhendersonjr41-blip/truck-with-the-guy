@@ -1,0 +1,13 @@
+{
+  "indexes": [
+    { "collectionGroup": "jobs", "queryScope": "COLLECTION", "fields": [
+      { "fieldPath": "city", "order": "ASCENDING" }, { "fieldPath": "status", "order": "ASCENDING" }, { "fieldPath": "createdAt", "order": "DESCENDING" } ] },
+    { "collectionGroup": "jobs", "queryScope": "COLLECTION", "fields": [
+      { "fieldPath": "customerId", "order": "ASCENDING" }, { "fieldPath": "createdAt", "order": "DESCENDING" } ] },
+    { "collectionGroup": "matches", "queryScope": "COLLECTION", "fields": [
+      { "fieldPath": "truckerId", "order": "ASCENDING" }, { "fieldPath": "createdAt", "order": "DESCENDING" } ] },
+    { "collectionGroup": "matches", "queryScope": "COLLECTION", "fields": [
+      { "fieldPath": "customerId", "order": "ASCENDING" }, { "fieldPath": "createdAt", "order": "DESCENDING" } ] }
+  ],
+  "fieldOverrides": []
+}

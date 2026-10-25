@@ -1,0 +1,78 @@
+<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Truck With The Guy</title>
+<style>body{margin:0;font-family:system-ui;background:#111;color:#eee}.app{max-width:420px;margin:auto;min-height:100vh;background:#1b1b1f;padding:16px;box-sizing:border-box}h1{font-size:22px;margin:4px 0}.tabs{display:flex;gap:6px;margin:10px 0}.tabs button{flex:1;padding:10px 4px;font-size:12px;border:0;border-radius:12px;font-weight:700;background:#333;color:#eee}.tabs .on,.btn{background:#ff7a00;color:#111}.btn{padding:12px;border:0;border-radius:12px;font-weight:700;width:100%;margin-top:6px}.btn:disabled{background:#444;color:#888}.g{background:#444;color:#eee}.grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}.chip{padding:10px;border-radius:12px;background:#2a2a30;text-align:center;cursor:pointer;font-size:14px}.sel{outline:3px solid #ff7a00}select,input{width:100%;padding:10px;margin:4px 0;border-radius:10px;border:0;background:#2a2a30;color:#eee;box-sizing:border-box}input[type=checkbox]{width:auto}.card{background:#2a2a30;border-radius:12px;padding:12px;margin:10px 0}.price{font-size:26px;color:#ff7a00;font-weight:800}.hide{display:none}small{color:#aaa}.ok{color:#4cd964}.no{color:#ff453a}.h{display:flex;justify-content:space-between;background:#1b1b1f;border-radius:8px;padding:8px;margin:4px 0}</style></head><body><div class="app">
+<h1>🛻 Truck With The Guy</h1><small>We connect you with a local full-size pickup + a guy. You pay the driver directly.</small>
+<div id="lw" class="card" style="text-align:center"></div>
+<details><summary><small>⚙️ Launch settings (admin)</small></summary><small>Launch date</small><input type="date" id="ld"><small>Free days</small><input type="number" id="fd" value="7"></details>
+<div class="tabs"><button id="t_c" class="on" onclick="tab('c')">Book</button><button id="t_d" onclick="tab('d')">Job board</button><button id="t_p" onclick="tab('p')">My truck</button><button id="t_s" onclick="tab('s')">Plan</button></div>
+
+<div id="c"><div id="s1">
+<b>City</b><select id="city"></select><input id="ocn" class="hide" value="Your City" placeholder="City name">
+<small>Service range (mi from center)</small><input id="rad" type="number" value="15"><small id="mk"></small>
+<b>Job</b><div class="grid" id="jobs"></div>
+<b>Pickup</b><select id="from"></select><b>Drop-off</b><select id="to"></select><div id="rng" class="card"></div>
+<b>Time block</b><div class="grid" id="blocks"></div>
+<select id="when"><option>ASAP</option><option>Today, 2 PM</option><option>Tomorrow, 9 AM</option></select>
+<label><input type="checkbox" id="h2"> 2nd helper (+$30/hr)</label>
+<div class="card">Suggested price<br><span class="price" id="p"></span><br><small>Paid <b>directly to your driver</b> (cash, Cash App, Zelle, Venmo or their card link). The app never takes your job money. Drivers may confirm or counter-offer.</small></div>
+<div class="card"><small>✔ Background-checked drivers · ✔ Live GPS + chat (masked calls) · ✔ Photo proof of your items · ✔ Two-way ratings · Max 250 lb/item, no hazmat · Damage is covered by the <b>driver's own insurance</b> (look for the ✅ Insured badge)</small></div>
+<button class="btn" id="bk" onclick="post()">Post job</button></div>
+<div id="s2" class="hide"><div class="card"><h3>📋 Job posted</h3><p id="sum"></p><div id="st">Waiting for a driver to claim it… (open Job board)</div></div><button class="btn g" onclick="back()">New booking</button></div></div>
+
+<div id="d" class="hide"><div id="lock" class="card"></div><div id="board"></div></div>
+
+<div id="p" class="hide"><div class="card"><b>My truck</b><div id="ph" style="background:#1b1b1f;border-radius:10px;margin:8px 0"></div><small>Standard platform image for your truck type</small>
+<select id="mm"><option>Ford F-150</option><option>Chevy Silverado 1500</option><option>Ram 1500</option><option>Toyota Tundra</option><option>GMC Sierra 1500</option></select>
+<select id="bd"><option>6.5 ft</option><option>5.5 ft</option><option>8 ft</option></select><select id="co"><option>White</option><option>Black</option><option>Silver</option><option>Red</option><option>Blue</option></select></div>
+<div class="card"><b>How customers pay me</b><small> (shown on their Pay screen)</small><input id="hc" value="$MarcusHauls" placeholder="Cash App"><input id="hz" value="marcus@email.com" placeholder="Zelle"><input id="hv" value="@Marcus-Hauls" placeholder="Venmo"><input id="hl" value="square.link/marcus" placeholder="Square/Stripe pay link"><label><input type="checkbox" id="hcash" checked> Cash OK</label>
+<br><label><input type="checkbox" id="dep" checked> Ask for a deposit (25%) when the job is confirmed</label><br><label><input type="checkbox" id="m40" checked> Ask for the first-40-minutes share once on-site</label></div>
+<div class="card"><b>Verification</b><br><small>✅ License · ✅ Checkr background + MVR (driver-paid) · ✅ Truck type matches registration · ✅ Insured badge (own commercial/business-use auto + cargo ⚠️ confirm)</small></div></div>
+
+<div id="s" class="hide"><div class="card"><b>Driver plan</b><br><span class="price" id="planp"></span><br><small id="plant"></small><button class="btn" id="subb" onclick="sub=!sub;plan()"></button></div>
+<div class="card"><small>Add-ons: ⭐ Featured listing $7/week · Partner ads run on city pages<br>You keep <b>100%</b> of what customers pay you. There are no per-job fees.</small></div></div>
+
+<p style="text-align:center"><button onclick="alert('SOS: sharing location with 911 + emergency contact')" style="background:#ff453a;color:#fff;border:0;border-radius:8px;padding:6px 12px">🆘 SOS</button> <button onclick="alert('Help: text support 7 AM–9 PM')" style="border:0;border-radius:8px;padding:6px 12px">Help</button></p>
+<p style="text-align:center"><small>Demo only · Proprietary product design · Connection-only: the app never holds job payments</small></p></div>
+<script>const $=id=>document.getElementById(id);
+const J=["🏬 Store pickup","📦 Small move","🛒 Marketplace","🗑️ Junk run","🪵 Hauling"],B=[["1 hr",79,1],["2 hrs",139,2],["Half day",249,4],["Full day",449,8]];
+const C={"Chattanooga, TN":[1,[["Downtown Chattanooga",0],["Lowe's, Fort Oglethorpe GA",6],["Hixson",9],["East Ridge",6],["Cleveland, TN",30]]],
+"Atlanta, GA":[1.2,[["Downtown Atlanta",0],["Home Depot, Midtown",3],["Decatur",6],["Buckhead",8],["Sandy Springs",13],["Marietta",18],["Lawrenceville",30]]],
+"Nashville, TN":[1.15,[["Downtown Nashville",0],["The Gulch",1],["East Nashville",3],["Lowe's, Antioch",11],["Brentwood",12],["Franklin",21],["Murfreesboro",34]]],
+"Knoxville, TN":[1,[["Downtown Knoxville",0],["UT campus",2],["Bearden",5],["Home Depot, Turkey Creek",14],["Powell",9],["Maryville",17]]],
+"Birmingham, AL":[0.95,[["Downtown Birmingham",0],["Homewood",4],["Vestavia Hills",7],["Hoover (Lowe's)",12],["Trussville",16],["Tuscaloosa",58]]],
+"Any other city":[1,[["Downtown",0],["Home improvement store",5],["Furniture store",8],["Suburb",12],["Next town over",25]]]};
+let j=0,b=0,P=[],M=1,sub=false,price=0;
+$('ld').value=new Date(Date.now()-2*864e5).toISOString().slice(0,10);
+function daysLeft(){let s=new Date($('ld').value+'T00:00:00').getTime(),n=+$('fd').value||0;return Math.max(0,Math.ceil((s+n*864e5-Date.now())/864e5))}
+function free(){return daysLeft()>0}
+function banner(){let d=daysLeft();$('lw').innerHTML=d>0?'🎉 <b>Launch week: $0 fees, '+d+' day'+(d>1?'s':'')+' left</b><br><small>Drivers claim jobs free and keep 100%. Customers never pay the app.</small>':'<b>Launch week is over</b><br><small>Drivers: $15/week plan to claim jobs. Customers still pay the app nothing.</small>';$('lw').style.background=d>0?'#123d24':'#333';plan();render()}
+function chips(el,arr,set,lab){arr.forEach((t,i)=>{let d=document.createElement('div');d.className='chip'+(i?'':' sel');d.textContent=lab?lab(t):t;d.onclick=()=>{set(i);[...el.children].forEach((c,k)=>c.classList.toggle('sel',k==i));calc()};el.appendChild(d)})}
+chips($('jobs'),J,i=>j=i);chips($('blocks'),B,i=>b=i,t=>t[0]);
+Object.keys(C).forEach(k=>$('city').add(new Option(k,k)));
+function cname(){return $('city').value=='Any other city'?$('ocn').value:$('city').value}
+function city(){let k=$('city').value;M=C[k][0];P=C[k][1];$('ocn').classList.toggle('hide',k!='Any other city');['from','to'].forEach(s=>{$(s).innerHTML='';P.forEach((p,i)=>$(s).add(new Option(p[0]+' ('+p[1]+' mi)',i)))});$('to').value=2;$('mk').textContent='Market price ×'+M;calc()}
+function R(){return +$('rad').value||15}
+function inR(){return P[$('from').value][1]<=R()&&P[$('to').value][1]<=R()}
+function calc(){let r=inR();$('rng').innerHTML=r?'<span class="ok">✅ Inside the '+R()+'-mi range of '+cname()+'</span>':'<span class="no">⛔ Outside the service range, not available yet</span>';
+[...$('blocks').children].forEach((c,k)=>c.textContent=B[k][0]+' · $'+Math.round(B[k][1]*M));
+price=Math.round(B[b][1]*M)+($('h2').checked?30*B[b][2]:0)+(j==3?25:0);$('p').textContent='$'+price;$('bk').disabled=!r;return price}
+const CL={White:'#e8e8e8',Black:'#2b2b2b',Silver:'#a8adb3',Red:'#c0392b',Blue:'#2f5fa8'};
+function svg(){let bed={'5.5 ft':70,'6.5 ft':90,'8 ft':115}[$('bd').value],c=CL[$('co').value],w=150+bed;return `<svg viewBox="0 0 ${w+20} 110" width="100%" height="120"><rect x="10" y="45" width="${bed}" height="30" fill="${c}" stroke="#000"/><path d="M${10+bed} 75 V40 L${40+bed} 15 H${95+bed} L${110+bed} 45 H${w} V75 Z" fill="${c}" stroke="#000"/><path d="M${48+bed} 22 H${90+bed} L${100+bed} 42 H${48+bed} Z" fill="#9fd3ff"/><circle cx="35" cy="80" r="16" fill="#111" stroke="#888" stroke-width="4"/><circle cx="${w-25}" cy="80" r="16" fill="#111" stroke="#888" stroke-width="4"/><text x="${(w+20)/2}" y="105" fill="#ff7a00" font-size="11" text-anchor="middle">${$('mm').value} · ${$('bd').value} bed</text></svg>`}
+function truck(){return $('co').value+' '+$('mm').value+' · '+$('bd').value+' bed'}
+['mm','bd','co'].forEach(i=>$(i).addEventListener('change',()=>$('ph').innerHTML=svg()));$('ph').innerHTML=svg();
+let jobs=[{t:J[1],a:"Hixson → Red Bank",bl:"2 hrs",pr:139},{t:J[3],a:"East Ridge → dump",bl:"1 hr",pr:104},{t:J[0],a:"Home Depot → Downtown",bl:"1 hr",pr:79}];
+function canClaim(){return free()||sub}
+function render(){$('lock').innerHTML=canClaim()?'<b>🟢 Online</b> · Marcus ⭐4.9 · ✅ Insured<br><small>'+(free()?'Launch week: claiming is free':'Plan active')+' · you keep 100% · customers pay you directly</small>':'<b>🔒 Start your plan to claim jobs</b><br><small>$15/week · see the Plan tab</small>';
+$('board').innerHTML=jobs.map((x,i)=>`<div class="card"><b>${x.t}</b> · ${x.bl}<br>${x.a}<br>Suggested <span class="price">$${x.pr}</span>${x.c?`<br><b class="ok">✅ Claimed at $${x.fp}</b>`:canClaim()?`<br><button class="btn" onclick="claim(${i},${x.pr})">Claim at $${x.pr}</button><button class="btn g" onclick="let v=prompt('Your price',${x.pr+20});if(v)claim(${i},+v)">Counter-offer</button>`:'<br><small>🔒 Plan required</small>'}</div>`).join('')}
+function claim(i,fp){let x=jobs[i];x.c=1;x.fp=fp;if(x.mine)showPay(fp,fp!=x.pr);render()}
+function hd(n,v){return v?`<div class="h"><span>${n}</span><b>${v}</b></div>`:''}
+function showPay(fp,counter){let dep=Math.round(fp*.25);$('st').innerHTML=`✅ <b>Marcus</b> ⭐4.9 · ✅ Insured claimed your job${counter?` with a counter-offer of <b>$${fp}</b> <button onclick="this.parentNode.querySelector('.acc').textContent='Price accepted'">Accept</button> <span class="acc"></span>`:` at <b>$${fp}</b>`}.${svg()}<b>${truck()}</b><br><small>Check that this is the truck that shows up.</small><br>📍 Live GPS: 6 min away · <button onclick="alert('Chat (masked number)')">💬 Chat</button>
+<div class="card" style="background:#1d2b3a"><b>💵 Pay driver directly</b><br><small>The app never takes or holds your job money. Pay Marcus directly:</small>${hd('Cash App',$('hc').value)}${hd('Zelle',$('hz').value)}${hd('Venmo',$('hv').value)}${hd('Card link',$('hl').value)}${$('hcash').checked?hd('Cash','OK'):''}
+${$('dep').checked?`<small>• Driver asks for a <b>$${dep} deposit</b> now.</small><br>`:''}${$('m40').checked?`<small>• Then the first-40-minutes share once he's on-site.</small><br>`:''}<small>• The rest is due at completion. Only pay the handles shown here, never before a driver is assigned.</small></div>
+<button class="btn g" onclick="this.outerHTML='<p>⭐⭐⭐⭐⭐ Thanks! Rate submitted. Report a problem within 24 hrs.</p>'">Job done, rate Marcus</button>`}
+function post(){let f=P[$('from').value][0],t=P[$('to').value][0];$('sum').textContent=J[j]+': '+f+' → '+t+' · '+B[b][0]+' · '+$('when').value+' · suggested $'+price+' · '+cname();jobs.unshift({t:J[j]+' 🆕',a:f+' → '+t,bl:B[b][0],pr:price,mine:1});$('st').textContent='Waiting for a driver to claim it… (open Job board)';render();$('s1').classList.add('hide');$('s2').classList.remove('hide')}
+function back(){$('s2').classList.add('hide');$('s1').classList.remove('hide')}
+function plan(){let f=free();$('planp').textContent=f?'$0 (launch week)':(sub?'$15/week · active':'$15/week');$('plant').textContent=f?'Free for '+daysLeft()+' more day(s). Then $15/week, or lock the founding-driver rate of $10/week.':'Billed to your card weekly. Cancel anytime. Covers unlimited job claims, and you keep 100%.';$('subb').textContent=f?'Free during launch week':(sub?'Cancel plan':'Start $15/week plan');$('subb').disabled=f;render()}
+function tab(t){['c','d','p','s'].forEach(k=>{$(k).classList.toggle('hide',k!=t);$('t_'+k).classList.toggle('on',k==t)})}
+document.querySelectorAll('#c select,#c input').forEach(e=>{e.onchange=calc;e.oninput=calc});$('city').onchange=city;
+['ld','fd'].forEach(i=>$(i).addEventListener('input',banner));city();banner();
+</script></body></html>

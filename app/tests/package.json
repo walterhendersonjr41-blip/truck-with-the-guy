@@ -1,0 +1,21 @@
+{
+  "name": "tests",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "firebase emulators:exec --only firestore,auth --project demo-truckguy --config ../firebase.json \"mocha rules.test.mjs flows.test.mjs\"",
+    "test:e2e": "firebase emulators:exec --only firestore,auth,hosting --project demo-truckguy --config ../firebase.json \"node e2e.ui.mjs\""
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "module",
+  "devDependencies": {
+    "@firebase/rules-unit-testing": "^5.0.2",
+    "firebase": "^12.19.0",
+    "firebase-tools": "^15.34.0",
+    "mocha": "^12.0.3",
+    "puppeteer-core": "^24.43.1"
+  }
+}
